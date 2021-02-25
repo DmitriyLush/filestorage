@@ -1,7 +1,7 @@
-from app import db, login
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+from werkzeug.security import check_password_hash, generate_password_hash
 
+from app import db, login
 
 
 class User(UserMixin, db.Model):
@@ -23,7 +23,9 @@ class Users_files(db.Model):
     name = db.Column(db.String(300))
     data = db.Column(db.LargeBinary)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    mimetype = db.Column(db.String)
     parent = db.Column(db.Integer, db.ForeignKey('dir.id'))
+
 
 # parent - папка в которой лежит объект Users_files, Dir *-1 Dir
 class Dir(db.Model):
@@ -31,7 +33,6 @@ class Dir(db.Model):
     name = db.Column(db.String(128), index=True, unique=True)
     parent = db.Column(db.Integer, db.ForeignKey('dir.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-
 
 
 @login.user_loader

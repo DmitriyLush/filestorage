@@ -3,15 +3,18 @@
   <head>
     <title>File Upload</title>
   </head>
-  <bod>
+  <body>
     <h1>File Upload</h1>
     <form method="POST" action="" enctype="multipart/form-data">
       <p><input type="file" name="file"></p>
       <p><input type="submit" value="Submit"></p>
     </form>
-    <h1>Files</h1>
+    <h1>File structure</h1>
+    {% for folder in folders %}
+    <a href="{{folder.path}}">Directory: {{folder.name}}</a>
+    {% endfor %}
     {% for file in files %}
-    <a href={{file.path}}>{{file.name}}</a>
+    <a href="{{file.path}}">File: {{file.name}}</a>
     {% endfor %}
   </body>
 </html>
