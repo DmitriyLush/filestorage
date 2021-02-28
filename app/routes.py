@@ -7,6 +7,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 from app import app, db
 from app.forms import LoginForm, RegistrationForm
 from app.models import Dir, User, Users_files
+from app.core.filesystem import Filesystem
 
 
 def basename(filename: str) -> str:
@@ -26,18 +27,10 @@ def index():
 @app.route('/filesystem', methods=['GET'])
 @login_required
 def filesystem_root():
-    parent_folder = "/"
-    folder = Dir.query.filter_by(name=parent_folder, user_id=current_user.id).first()
-    if parent_folder == "/" and folder is None:
-        folder = Dir(name="/", user_id=current_user.id)
-        db.session.add(folder)
-        db.session.commit()
-    if folder is None:
-        abort(404)
-    files = Users_files.query.filter_by(parent=folder.id, user_id=current_user.id).all()  # Нашли файлы в папке
+    filesystem = Filesystem(current_user.id)
+    files, folders = filesystem.get_all()
+    
     files = [{"name": file.name, "path": f"/filesystem/{file.name}"} for file in files]  # Удобное представление для jinja
-
-    folders = Dir.query.filter_by(parent=folder.id, user_id=current_user.id).all()
     folders = [{"name": folder.name, "path": f"/filesystem/{folder.name}"} for folder in folders]
 
     return render_template('index.html', files=files, folders=folders)
@@ -46,27 +39,19 @@ def filesystem_root():
 @app.route('/filesystem/<path:path>', methods=['GET'])
 @login_required
 def filesystem_get(path):
-    file = retrieve_file(basename(path), current_user.id)
+    filesystem = Filesystem(current_user.id)
+    file = filesystem.retrieve_file(path)
     if file is not None:
         return send_file(
             io.BytesIO(file.data),
             attachment_filename=file.name,
             mimetype=file.mimetype
         )
-
-    parent_folder = basename(path) if basename(path) != "" else "/"
-    folder = Dir.query.filter_by(name=parent_folder, user_id=current_user.id).first()
-    if parent_folder == "/" and folder is None:
-        folder = Dir(name="/", user_id=current_user.id)
-        db.session.add(folder)
-        db.session.commit()
-    if folder is None:
-        abort(404)
-    files = Users_files.query.filter_by(parent=folder.id, user_id=current_user.id).all()  # Нашли файлы в папке
-    files = [{"name": file.name, "path": f"filesystem/{path}/{file.name}"} for file in files]  # Удобное представление для jinja
-
-    folders = Dir.query.filter_by(parent=folder.id, user_id=current_user.id).all()
-    folders = [{"name": folder.name, "path": f"filesystem/{path}/{folder.name}"} for folder in folders]
+    filesystem.go(path)
+    files, folders = filesystem.get_all()
+    
+    files = [{"name": file.name, "path": f"/filesystem/{file.name}"} for file in files]  # Удобное представление для jinja
+    folders = [{"name": folder.name, "path": f"/filesystem/{folder.name}"} for folder in folders]
 
     return render_template('index.html', files=files, folders=folders)
 
@@ -121,6 +106,16 @@ def filesystem_post(path):
     )
     db.session.add(new_file)
     db.session.commit()
+
+
+
+    # NEW ABSTRACTION
+    file = request.files['file']
+    filesystem = Filesystem(current_user.id)
+    filesystem.go(path)
+    filesystem.create_file(file)
+
+
     return render_template('upload.html', name=file.filename, user_id=current_user.id)
 
 
@@ -144,6 +139,13 @@ def filesystem_root__post():
     )
     db.session.add(new_file)
     db.session.commit()
+
+
+    # NEW ABSTRACTION
+    file = request.files['file']
+    filesystem = Filesystem(current_user.id)
+    filesystem.create_file(file)
+
     return render_template('upload.html', name=file.filename, user_id=current_user.id)
 
 
