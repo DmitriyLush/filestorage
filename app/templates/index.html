@@ -9,6 +9,11 @@
       <p><input type="file" name="file"></p>
       <p><input type="submit" value="Submit"></p>
     </form>
+    <h1>Create new dir</h1>
+    <form method="POST" action="" enctype="multipart/form-data">
+      <p><input type="text" name="dirname"></input></p>
+      <p><input type="submit" value="Submit"></p>
+    </form>
     <h1>File structure</h1>
     {% for folder in folders %}
     <a href="{{folder.path}}">Directory: {{folder.name}}</a>

@@ -30,7 +30,7 @@ class Users_files(db.Model):
 # parent - папка в которой лежит объект Users_files, Dir *-1 Dir
 class Dir(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), index=True, unique=True)
+    name = db.Column(db.String(128), index=True)
     parent = db.Column(db.Integer, db.ForeignKey('dir.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 

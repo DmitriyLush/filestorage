@@ -1,7 +1,7 @@
 import io
 from typing import Optional
 
-from flask import abort, flash, redirect, render_template, request, send_file, url_for
+from flask import abort, flash, redirect, render_template, request, send_file, url_for, redirect
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app import app, db
@@ -49,9 +49,9 @@ def filesystem_get(path):
         )
     filesystem.go(path)
     files, folders = filesystem.get_all()
-    
-    files = [{"name": file.name, "path": f"/filesystem/{file.name}"} for file in files]  # Удобное представление для jinja
-    folders = [{"name": folder.name, "path": f"/filesystem/{folder.name}"} for folder in folders]
+
+    files = [{"name": file.name, "path": f"/filesystem/{path}/{file.name}"} for file in files]  # Удобное представление для jinja
+    folders = [{"name": folder.name, "path": f"/filesystem/{path}/{folder.name}"} for folder in folders]
 
     return render_template('index.html', files=files, folders=folders)
 
@@ -88,65 +88,32 @@ def register():
 
 @app.route('/filesystem/<path:path>', methods=['POST'])
 def filesystem_post(path):
-    file = request.files['file']
-    parent_folder_name = basename(path) if basename(path) != "" else "/"
+    if 'file' in request.files:
+        file = request.files['file']
+        filesystem = Filesystem(current_user.id)
+        filesystem.go(path)
+        filesystem.create_file(file)
+    else:
+        dirname = request.form['dirname']
+        filesystem = Filesystem(current_user.id)
+        filesystem.go(path)
+        filesystem.create_dir(dirname)
 
-    parent_folder = Dir.query.filter_by(name=parent_folder_name, user_id=current_user.id).first()
-    if parent_folder_name == "/" and parent_folder is None:
-        parent_folder = Dir(name="/", user_id=current_user.id)
-        db.session.add(parent_folder)
-        db.session.commit()
-
-    new_file = Users_files(
-        name=file.filename,
-        data=file.read(),
-        user_id=current_user.id,
-        mimetype=file.mimetype,
-        parent=parent_folder.id
-    )
-    db.session.add(new_file)
-    db.session.commit()
-
-
-
-    # NEW ABSTRACTION
-    file = request.files['file']
-    filesystem = Filesystem(current_user.id)
-    filesystem.go(path)
-    filesystem.create_file(file)
-
-
-    return render_template('upload.html', name=file.filename, user_id=current_user.id)
+    return redirect(f"/filesystem/{path}")
 
 
 @app.route('/filesystem', methods=['POST'])
 def filesystem_root__post():
-    file = request.files['file']
-    parent_folder_name = "/"
+    if 'file' in request.files:
+        file = request.files['file']
+        filesystem = Filesystem(current_user.id)
+        filesystem.create_file(file)
+    else:
+        dirname = request.form['dirname']
+        filesystem = Filesystem(current_user.id)
+        filesystem.create_dir(dirname)
 
-    parent_folder = Dir.query.filter_by(name=parent_folder_name, user_id=current_user.id).first()
-    if parent_folder_name == "/" and parent_folder is None:
-        parent_folder = Dir(name="/", user_id=current_user.id)
-        db.session.add(parent_folder)
-        db.session.commit()
-
-    new_file = Users_files(
-        name=file.filename,
-        data=file.read(),
-        user_id=current_user.id,
-        mimetype=file.mimetype,
-        parent=parent_folder.id
-    )
-    db.session.add(new_file)
-    db.session.commit()
-
-
-    # NEW ABSTRACTION
-    file = request.files['file']
-    filesystem = Filesystem(current_user.id)
-    filesystem.create_file(file)
-
-    return render_template('upload.html', name=file.filename, user_id=current_user.id)
+    return redirect("/filesystem")
 
 
 @app.route('/logout')
